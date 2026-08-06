@@ -15,5 +15,5 @@ eJPTv2 ✅
 CPTS 🔄
 
 # Links
-LinkedIn https://www.linkedin.com/in/alejandro-sosa-sanchez-73772b223/
+LinkedIn https://www.linkedin.com/in/alejandro-sosa-sanchez-73772b223/ <br>
 HTB https://app.hackthebox.com/users/3170932?profile-top-tab=machines&ownership-period=1M&profile-bottom-tab=prolabs
