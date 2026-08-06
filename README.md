@@ -11,7 +11,7 @@ Burp Suite
 Nmap
 
 # Certifications
-eJPTv2 ✅
+eJPTv2 ✅ <br>
 CPTS 🔄
 
 # Links
